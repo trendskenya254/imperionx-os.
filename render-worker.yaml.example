@@ -1,0 +1,38 @@
+# OPTIONAL: Add this service only after outbound webhook security/egress review.
+# Set WEBHOOK_DELIVERY_ENABLED=true in the Render dashboard only after approval.
+services:
+  - type: worker
+    name: imperionx-webhook-worker
+    runtime: docker
+    region: frankfurt
+    plan: 0.5c-512mb
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: python scripts/wait_for_schema.py && python -m app.webhook_delivery
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 60
+    envVars:
+      - key: APP_NAME
+        value: IMPERIONX OS
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: imperionx-db
+          property: connectionString
+      - key: MFA_ENCRYPTION_KEY
+        fromService:
+          name: imperionx-api
+          type: web
+          envVarKey: MFA_ENCRYPTION_KEY
+      - key: PUBLIC_RATE_LIMIT_HMAC_KEY
+        fromService:
+          name: imperionx-api
+          type: web
+          envVarKey: PUBLIC_RATE_LIMIT_HMAC_KEY
+      - key: WEBHOOK_DELIVERY_ENABLED
+        sync: false
+      - key: DB_POOL_SIZE
+        value: "2"
+      - key: DB_MAX_OVERFLOW
+        value: "2"
